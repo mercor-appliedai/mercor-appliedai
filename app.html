@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 Startup Hiring Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f9; }
+    h1, h2 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #ddd; }
+    .container { max-width: 1000px; margin: auto; }
+    .highlight { background: #e7ffe7; }
+    .warning { color: red; font-weight: bold; }
+    .success { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Startup Hiring Dashboard</h1>
+    <p>Upload your <code>data.json</code> file to filter candidates.</p>
+    
+    <input type="file" id="fileInput" accept=".json"><br><br>
+
+    <h2>📊 Roles Summary</h2>
+    <table id="rolesTable"></table>
+
+    <h2>👥 Filtered Candidates (Excluding Full Stack & No Experience)</h2>
+    <table id="candidatesTable"></table>
+
+    <h2>📌 Select Your Team (5 Members)</h2>
+    <div id="selection"></div>
+    <p id="teamMessage"></p>
+  </div>
+
+  <script>
+    document.getElementById("fileInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          let candidates = [];
+          let allRoles = [];
+
+          data.forEach(person => {
+            const workExps = person.work_experiences || [];
+            if (workExps.length === 0) return; // Skip if no experience
+
+            const roles = workExps.map(exp => exp.roleName);
+            allRoles.push(...roles);
+
+            if (roles.some(r => r.toLowerCase().includes("full stack developer"))) return; // Skip full stack devs
+
+            candidates.push({
+              name: person.name,
+              email: person.email,
+              phone: person.phone,
+              location: person.location,
+              skills: (person.skills || []).join(", "),
+              roles: roles.join(", "),
+              salary: person.annual_salary_expectation?.["full-time"] || "N/A"
+            });
+          });
+
+          // ---- Roles Summary ----
+          const roleCounts = {};
+          allRoles.forEach(r => { roleCounts[r] = (roleCounts[r] || 0) + 1; });
+
+          let rolesHtml = "<tr><th>Role</th><th>Count</th></tr>";
+          Object.entries(roleCounts).forEach(([role, count]) => {
+            rolesHtml += `<tr><td>${role}</td><td>${count}</td></tr>`;
+          });
+          document.getElementById("rolesTable").innerHTML = rolesHtml;
+
+          // ---- Candidates Table ----
+          let candHtml = "<tr><th>Name</th><th>Email</th><th>Phone</th><th>Location</th><th>Skills</th><th>Roles</th><th>Salary</th><th>Select</th></tr>";
+          candidates.forEach((c, index) => {
+            candHtml += `
+              <tr>
+                <td>${c.name}</td>
+                <td>${c.email}</td>
+                <td>${c.phone}</td>
+                <td>${c.location}</td>
+                <td>${c.skills}</td>
+                <td>${c.roles}</td>
+                <td>${c.salary}</td>
+                <td><input type="checkbox" class="selectCandidate" data-name="${c.name}"></td>
+              </tr>`;
+          });
+          document.getElementById("candidatesTable").innerHTML = candHtml;
+
+          // ---- Selection Handling ----
+          const selectionDiv = document.getElementById("selection");
+          const message = document.getElementById("teamMessage");
+
+          document.querySelectorAll(".selectCandidate").forEach(cb => {
+            cb.addEventListener("change", function() {
+              const selected = Array.from(document.querySelectorAll(".selectCandidate:checked"))
+                                    .map(x => x.dataset.name);
+
+              selectionDiv.innerHTML = "<b>Selected Team:</b> " + selected.join(", ");
+
+              if (selected.length > 5) {
+                message.innerHTML = "<span class='warning'>⚠️ You can select only up to 5 members!</span>";
+              } else if (selected.length === 5) {
+                message.innerHTML = "<span class='success'>✅ Perfect! You have selected your 5 team members.</span>";
+              } else {
+                message.innerHTML = "";
+              }
+            });
+          });
+
+        } catch (err) {
+          alert("Error parsing JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
